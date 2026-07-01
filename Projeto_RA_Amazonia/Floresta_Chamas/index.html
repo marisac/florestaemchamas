@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Projeto RA Amazônia - Floresta em Chamas</title>
   
-  <!-- Importação das bibliotecas do A-Frame e MindAR -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
@@ -14,59 +13,55 @@
       margin: 0;
       overflow: hidden;
     }
-    /* Estilo para suavizar a transição do vídeo ao aparecer */
-    video {
-      opacity: 0;
-      transition: opacity 0.5s ease;
-    }
   </style>
 </head>
 <body>
 
-  <!-- Configuração da Cena com filtro de estabilidade aumentado -->
   <a-scene 
-    mindar-image="imageTargetSrc: ./alvoflorestachamas.mind; filterMinCF: 0.001; filterBeta: 10;" 
+    mindar-image="imageTargetSrc: ./alvoflorestachamas.mind; filterMinCF: 0.0001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 5;" 
     color-space="sRGB" 
     renderer="colorManagement: true, physicallyCorrectLights: true" 
     vr-mode-ui="enabled: false" 
     device-orientation-permission-ui="enabled: false">
     
     <a-assets>
-      <!-- Seu vídeo original com configurações de execução automática no celular -->
       <video id="video-floresta" src="Florestachamas.mp4" preload="auto" loop="true" playsinline webkit-playsinline></video>
     </a-assets>
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!-- Relação com o marcador 0 -->
     <a-entity mindar-image-target="targetIndex: 0">
       
-      <!-- Vídeo vertical (1.77) com inclinação de -20º e efeitos de animação ao surgir -->
       <a-video 
+        id="target-video"
         src="#video-floresta" 
         width="1" 
         height="1.77" 
-        position="0 0 0.1" 
+        position="0 0 0.2" 
         rotation="-20 0 0"
-        animation__scale="property: scale; from: 0 0 0; to: 1 1 1; dur: 1200; easing: easeOutElastic; startEvents: targetFound"
-        animation__fade="property: material.opacity; from: 0; to: 1; dur: 800; startEvents: targetFound">
+        scale="0.001 0.001 0.001"
+        material="opacity: 0"
+        animation__scale="property: scale; from: 0.001 0.001 0.001; to: 2.5 2.5 2.5; dur: 2500; easing: easeOutQuad; startEvents: targetFound"
+        animation__fade="property: material.opacity; from: 0; to: 1; dur: 1000; easing: linear; startEvents: targetFound">
       </a-video>
 
     </a-entity>
   </a-scene>
 
-  <!-- Script simples para dar Play automático no vídeo assim que o alvo for detectado -->
   <script>
     const entity = document.querySelector('[mindar-image-target]');
     const video = document.querySelector('#video-floresta');
+    const aVideo = document.querySelector('#target-video');
 
     entity.addEventListener("targetFound", event => {
       video.play();
-      video.style.opacity = "1";
     });
 
     entity.addEventListener("targetLost", event => {
       video.pause();
+      // Reseta a escala e opacidade para o efeito reiniciar no próximo escaneamento
+      aVideo.setAttribute('scale', '0.001 0.001 0.001');
+      aVideo.setAttribute('material', 'opacity: 0');
     });
   </script>
 
