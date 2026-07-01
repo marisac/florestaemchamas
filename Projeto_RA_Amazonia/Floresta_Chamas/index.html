@@ -1,86 +1,111 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Realidade Aumentada - Floresta em Chamas</title>
-    <!-- Carrega o A-Frame e o MindAR para WebXR -->
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-        }
-        /* Botão para iniciar o vídeo após a interação do usuário (exigência dos navegadores) */
-        #play-button {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 999;
-            padding: 12px 24px;
-            background-color: #ff4757;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Projeto RA Amazônia - Floresta em Chamas</title>
+  
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: black; /* Fundo preto caso o vídeo demore a carregar */
+    }
+
+    /* CONTAINER DO VÍDEO NO AR */
+    #ar-video-container {
+      display: none; /* Começa oculto */
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 100vw; /* Ocupa a largura total da tela */
+      height: 177.77vw; /* Mantém a proporção 16:9 vertical (1280x720) */
+      
+      /* EFEITO TRIDIMENSIONAL E ESTABILIZAÇÃO VIA CSS */
+      transform: translate(-50%, -50%) rotateX(20deg) scale(0.1); 
+      transform-style: preserve-3d;
+      perspective: 1000px;
+      
+      /* Animação de suavização e movimento suave */
+      transition: transform 1.5s ease-out, opacity 1s ease;
+      opacity: 0;
+      z-index: 10;
+    }
+
+    /* O VÍDEO EM SI */
+    #video-floresta {
+      width: 100%;
+      height: 100%;
+      object-fit: contain; /* Garante que o vídeo não corte */
+    }
+
+    /* CLASSE PARA ATIVAR O EFEITO DE SURGIMENTO E CRESCIMENTO */
+    #ar-video-container.active {
+      display: block;
+      opacity: 1;
+      /* O vídeo cresce de 0.1 para 1.0, ocupando a tela inteira, mantendo a inclinação */
+      transform: translate(-50%, -50%) rotateX(20deg) scale(1);
+    }
+  </style>
 </head>
 <body>
 
-    <!-- Botão de sobreposição para dar o play inicial no vídeo -->
-    <button id="play-button">Ativar Áudio/Vídeo</button>
+  <a-scene 
+    mindar-image="imageTargetSrc: ./alvoflorestachamas.mind; autoStart: true; uiLoading: no; uiError: no;" 
+    color-space="sRGB" 
+    renderer="colorManagement: true, PhysicallyCorrectLights: true" 
+    vr-mode-ui="enabled: false" 
+    device-orientation-permission-ui="enabled: false">
+    
+    <a-assets>
+      <video id="video-source" src="Florestachamas.mp4" preload="auto" loop="true" playsinline webkit-playsinline crossorigin="anonymous"></video>
+    </a-assets>
 
-    <!-- Configuração da cena do MindAR apontando para o seu arquivo de alvo -->
-    <a-scene mindar-image="imageTargetSrc: ./alvoflorestachamas.mind; autoStart: true; uiLoading: yes; uiScanning: yes;" 
-             color-space="sRGB" 
-             renderer="colorManagement: true, physicallyCorrectLights" 
-             vr-mode-ui="enabled: false" 
-             device-orientation-permission-ui="enabled: false">
-        
-        <a-assets>
-            <!-- Carrega o vídeo renomeado. O atributo playsinline é crucial para mobile -->
-            <video id="video-floresta" src="./Florestachamas.mp4" preload="auto" loop="true" playsinline webkit-playsinline></video>
-        </a-assets>
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <a-entity mindar-image-target="targetIndex: 0" id="target-listener"></a-entity>
+  </a-scene>
 
-        <!-- Target index 0 (primeiro alvo mapeado no arquivo .mind) -->
-        <a-entity mindar-image-target="targetIndex: 0" id="target-floresta">
-            <!-- Plano onde o vídeo será renderizado sobre o alvo físico -->
-            <a-video src="#video-floresta" width="1" height="1.77" position="0 0 0" rotation="0 0 0"></a-video>
-        </a-entity>
-        
-    </a-scene>
+  <div id="ar-video-container">
+    <video id="video-floresta" loop="true" playsinline webkit-playsinline></video>
+  </div>
 
-    <script>
-        const video = document.querySelector('#video-floresta');
-        const button = document.querySelector('#play-button');
-        const target = document.querySelector('#target-floresta');
+  <script>
+    const sceneEl = document.querySelector('a-scene');
+    const targetEl = document.querySelector('#target-listener');
+    const videoSource = document.querySelector('#video-source');
+    const videoHTML = document.querySelector('#video-floresta');
+    const arContainer = document.querySelector('#ar-video-container');
 
-        // Desbloqueia o autoplay do vídeo através do clique no botão
-        button.addEventListener('click', () => {
-            video.play();
-            video.pause(); // Dá o play/pause rápido para o navegador liberar o canal de áudio
-            button.style.display = 'none'; // Esconde o botão após o clique
-        });
+    // Ao reconhecer o marcador
+    targetEl.addEventListener("targetFound", event => {
+      // 1. Sincroniza o vídeo HTML com a fonte original e dá Play
+      if (!videoHTML.src) videoHTML.src = videoSource.src;
+      videoHTML.play();
+      
+      // 2. Ativa a classe CSS que faz o efeito de crescer e sair do marcador
+      arContainer.style.display = 'block'; // Garante que a div apareça
+      setTimeout(() => {
+        arContainer.classList.add('active'); // Inicia a animação de crescimento
+      }, 50); // Pequeno atraso para o navegador processar
+    });
 
-        // Controle inteligente: só toca o vídeo se o alvo estiver visível na câmera
-        target.addEventListener('targetFound', event => {
-            console.log("Alvo floresta encontrado");
-            video.play();
-        });
+    // Ao perder o marcador
+    targetEl.addEventListener("targetLost", event => {
+      videoHTML.pause();
+      // Remove o efeito para o próximo escaneamento
+      arContainer.classList.remove('active');
+      // Oculta a div após a animação de saída (opcional, para performance)
+      setTimeout(() => {
+        if (!arContainer.classList.contains('active')) {
+          arContainer.style.display = 'none';
+        }
+      }, 1500); 
+    });
+  </script>
 
-        target.addEventListener('targetLost', event => {
-            console.log("Alvo perdido");
-            video.pause();
-        });
-    </script>
 </body>
 </html>
